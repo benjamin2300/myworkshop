@@ -15,9 +15,32 @@ def density(x, r, features):
             set.append(t)
     return set
 
+def cal_NNSet(r, k, length, distances, indices):
+    NNSet = []
+    for t in range(length):
+        NN = []
+        for tt in range(k+1):
+            if distances[t][tt] <= r:
+                print t, tt
+                NN.append(indices[t][tt])
+        NNSet.append(NN)
+    return NNSet
+
+def cal_SiSet(NNSet, length):
+    si_list = []
+    for i in range(length):
+        s_set = []
+        ni = len(NNSet[i]) - 1 
+        for j in NNSet[i]:
+            nj = len(NNSet[j]) - 1 
+            s = ni - nj
+            s_set.append(s)
+        s_max = max(s_set)
+        si_list.append(s_max)
+    return si_list
 k = 386
 rare_class = 'back.'
-dist_sum = []
+
 col_names = ["duration","protocol_type","service","flag","src_bytes",
     "dst_bytes","land","wrong_fragment","urgent","hot","num_failed_logins",
     "logged_in","num_compromised","root_shell","su_attempted","num_root",
@@ -61,57 +84,32 @@ features_sc = features.apply(lambda x: MinMaxScaler().fit_transform(x))
 nbrs = NearestNeighbors(n_neighbors=k+1, algorithm='kd_tree').fit(features_sc)
 distances, indices = nbrs.kneighbors(features_sc)
 
-#sum distance
-for i in range(len(features_sc)):
-    dist_sum.append(distances[i].sum())
+#cal r 
+dist_max = []
+for t in range(len(features_sc)):
+    dist_max.append(max(distances[t]))
 
-min_dist = sorted(dist_sum)[0]
-for i in range(len(dist_sum)):
-    if min_dist == dist_sum[i]:
-        min_dist_index = i
-
-r = max(distances[min_dist_index])
-#r = min_dist / k
-
-density_sets = []
+r = min(dist_max)
 
 #step 2
-for t in range(len(features_sc)):
-    de_set=[]
-    for tt in range(k+1):
-        if distances[t][tt] <= r:
-            de_set.append(indices[t][tt])
-    density_sets.append(de_set)
-
-#cal si
-
-si_list = []
-for i in range(len(features_sc)):
-    s_set = []
-    ni = len(density_sets[i]) - 1 
-    for j in density_sets[i]:
-        nj = len(density_sets[j]) - 1 
-        s = ni - nj
-        s_set.append(s)
-    s_max = max(s_set)
-    si_list.append(s_max)
+n = len(features_sc)
 
 selected = []
-for t in range(len(features_sc)):
-    #find max si to query
+for t in range(n):
+    SiSet =[]
+    NNSet =[]
+    NNSet =cal_NNSet((t+1)*r, k, n, distances, indices)
+    SiSet = cal_SiSet(NNSet, n)
+    for i in range(len(selected)): 
+        SiSet[selected[i]] = -99999
     while True :
-        xi = si_list.index(max(si_list))
-        print (xi, si_list[xi])
+        xi = SiSet.index(max(SiSet))
+        print (xi, SiSet[xi])
         if xi not in selected:
             selected.append(xi)
-            si_list[xi] = -999999
             break
     #xi is query point
     if labels[xi] == rare_class:
         num_query = t+1
         break
-        
-print num_query
-#features_sc['label'] = labels
-#features_sc.to_csv('apache2R.csv', sep='\t', encoding='utf-8')
 
