@@ -29,44 +29,29 @@ def cal_SiSet(NNSet, length):
         s_max = max(s_set)
         si_list.append(s_max)
     return si_list
-k = 359
-rare_class = 'snmpguess.'
+k = 15
+rare_class = 3
 
-col_names = ["duration","protocol_type","service","flag","src_bytes",
-    "dst_bytes","land","wrong_fragment","urgent","hot","num_failed_logins",
-    "logged_in","num_compromised","root_shell","su_attempted","num_root",
-    "num_file_creations","num_shells","num_access_files","num_outbound_cmds",
-    "is_host_login","is_guest_login","count","srv_count","serror_rate",
-    "srv_serror_rate","rerror_rate","srv_rerror_rate","same_srv_rate",
-    "diff_srv_rate","srv_diff_host_rate","dst_host_count","dst_host_srv_count",
-    "dst_host_same_srv_rate","dst_host_diff_srv_rate","dst_host_same_src_port_rate",
-    "dst_host_srv_diff_host_rate","dst_host_serror_rate","dst_host_srv_serror_rate",
-    "dst_host_rerror_rate","dst_host_srv_rerror_rate","label"]
-
+col_names = [
+    "Sex", "Length", "Diameter", "Height", "Whole weight", "Shucked weight",
+    "Viscera weight", "Shell weight", "Rings"     
+]
 num_names = [
-    "duration","src_bytes",
-    "dst_bytes","land","wrong_fragment","urgent","hot","num_failed_logins",
-    "logged_in","num_compromised","root_shell","su_attempted","num_root",
-    "num_file_creations","num_shells","num_access_files","num_outbound_cmds",
-    "is_host_login","is_guest_login","count","srv_count","serror_rate",
-    "srv_serror_rate","rerror_rate","srv_rerror_rate","same_srv_rate",
-    "diff_srv_rate","srv_diff_host_rate","dst_host_count","dst_host_srv_count",
-    "dst_host_same_srv_rate","dst_host_diff_srv_rate","dst_host_same_src_port_rate",
-    "dst_host_srv_diff_host_rate","dst_host_serror_rate","dst_host_srv_serror_rate",
-    "dst_host_rerror_rate","dst_host_srv_rerror_rate"
+    "Length", "Diameter", "Height", "Whole weight", "Shucked weight",
+    "Viscera weight", "Shell weight"
 ]
 #read data
-data = pd.read_csv('../kdd99/corrected', header=None, names=col_names)
+data = pd.read_csv('../abalone/abalone.data', header=None, names=col_names)
 
 #dupicate remove
-data_nd = data.drop_duplicates(cols=col_names, take_last=True)
+#data_nd = data.drop_duplicates(cols=col_names, take_last=True)
 
 #choose data normal. and back.
-data_nd_b = data_nd.loc[data_nd['label'].isin(['normal.', rare_class])]
+data_nd_b = data.loc[data['Rings'].isin([9,rare_class])]
 
 #features, labels
 features = data_nd_b[num_names].astype(float)
-labels = data_nd_b['label']
+labels = data_nd_b['Rings']
 features.index = range(len(features))
 labels.index = range(len(labels))
 #scaler
@@ -82,8 +67,8 @@ for t in range(len(features_sc)):
 
 r = min(dist_max)
 
-features_sc['label'] = labels
-features_sc.to_csv('snmpguess.csv', sep='\t', encoding='utf-8')
+#features_sc['label'] = labels
+#features_sc.to_csv('snmpguess.csv', sep='\t', encoding='utf-8')
 #step 2
 n = len(features_sc)
 print "size : ", n
@@ -107,6 +92,8 @@ for t in range(n):
     if labels[xi] == rare_class:
         num_query = t+1
         break
+
+
 t1 = time() - t0
 print "radius : ", r
 print "No. of Query", num_query, ". Index : ", xi

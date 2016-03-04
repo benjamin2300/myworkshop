@@ -1,9 +1,14 @@
 import pandas as pd
 import numpy as np
+import random
 from time import time
 from sklearn.preprocessing import MinMaxScaler
 from scipy.spatial import distance
 from sklearn.neighbors import NearestNeighbors
+from sklearn.feature_selection import VarianceThreshold
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import chi2
+from sklearn import preprocessing
 
 t0 = time()
 
@@ -29,8 +34,10 @@ def cal_SiSet(NNSet, length):
         s_max = max(s_set)
         si_list.append(s_max)
     return si_list
-k = 359
-rare_class = 'snmpguess.'
+
+rare_class = 'back.'
+sample_size = 5000
+c = 7
 
 col_names = ["duration","protocol_type","service","flag","src_bytes",
     "dst_bytes","land","wrong_fragment","urgent","hot","num_failed_logins",
@@ -67,28 +74,48 @@ data_nd_b = data_nd.loc[data_nd['label'].isin(['normal.', rare_class])]
 #features, labels
 features = data_nd_b[num_names].astype(float)
 labels = data_nd_b['label']
+
+#sample
+rows = random.sample(features.index, sample_size)
+features = features.ix[rows]
+labels = labels.ix[rows]
+
 features.index = range(len(features))
 labels.index = range(len(labels))
-#scaler
-features_sc = features.apply(lambda x: MinMaxScaler().fit_transform(x))
-#step 1 find neighbor
-nbrs = NearestNeighbors(n_neighbors=k+1, algorithm='kd_tree').fit(features_sc)
-distances, indices = nbrs.kneighbors(features_sc)
+k = len(labels[labels == rare_class])
 
+
+#delete zero varience data, and choose best c features
+sel = VarianceThreshold(threshold=(.8 * (1 - .8)))
+features_nz = sel.fit_transform(features)
+
+#features selection
+features_nz_fs = SelectKBest(chi2, k=c).fit_transform(features_nz, labels)
+
+#scaler
+features_nz_fs_scaled = preprocessing.scale(features_nz_fs)
+df_sc = pd.DataFrame(features_nz_fs_scaled)
+
+
+#step 1 find neighbor
+nbrs = NearestNeighbors(n_neighbors=k+1, algorithm='kd_tree').fit(df_sc)
+distances, indices = nbrs.kneighbors(df_sc)
+
+n = len(df_sc)
 #cal r 
 dist_max = []
-for t in range(len(features_sc)):
+for t in range(n):
     dist_max.append(max(distances[t]))
 
 r = min(dist_max)
 
-features_sc['label'] = labels
-features_sc.to_csv('snmpguess.csv', sep='\t', encoding='utf-8')
+df_sc['label'] = labels
+df_sc.to_csv( rare_class +'csv', sep='\t', encoding='utf-8')
 #step 2
-n = len(features_sc)
+
 print "size : ", n
 print "radius : ", r
-
+print "k : ", k
 selected = []
 for t in range(n):
     SiSet =[]
@@ -111,4 +138,5 @@ t1 = time() - t0
 print "radius : ", r
 print "No. of Query", num_query, ". Index : ", xi
 print "Spend time : ", t1, " s"
-
+print "k : ", k
+print "proportion : ", k / float(sample_size)
